@@ -92,15 +92,20 @@ qpdf --version
    source venv/bin/activate       # Linux/macOS
    pip install -r requirements.txt
    ```
-
-3. Для запуска приложения необходимо вписать свои данные от аккаунта в файл **account.txt**
-   Это необходимо, потому что только авторизованные пользователи могу просматривать всё содержимое книги 
-   Данные хранятся локально в файле account.txt и используются только для авторизации на urait.ru.
-   Содержимое файла **account.txt** : 
+3. Для запуска приложения необходимо скопировать `account.example.txt` 
+   в `account.txt`:
+   ```
+   cp account.example.txt account.txt   # Linux/macOS
+   copy account.example.txt account.txt # Windows
+   ```
+   Содержимое файла `account.example.txt` : 
         
         `URAIT_EMAIL=you_email@gmail.com`
-        `URAIT_PASSWORD=your_password `   
+        `URAIT_PASSWORD=your_password `
 
+   И вписать свои данные, это необходимо, потому что только авторизованные пользователи могу просматривать всё содержимое книги 
+   Данные хранятся локально в файле account.txt и используются только для авторизации на urait.ru.
+ 
 4. Убедиться, что все три системные программы (Tesseract, Ghostscript, QPDF)
    установлены и доступны из PATH.
 

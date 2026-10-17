@@ -1,4 +1,5 @@
 .venv/
+old/
 temp/
 build/
 *.pdf
@@ -11,3 +12,6 @@ pyproject.toml
 test.py
 *.pyc
 session_cookies.json
+parsing.py
+Logi
+Logi_debag

@@ -21,7 +21,15 @@ TEMP_DIR = 'temp' # хз пока зачем(убрать)
 environ.Env.read_env('account.txt')
 EMAIL = env('URAIT_EMAIL')
 PASSWORD = env('URAIT_PASSWORD')
-assert EMAIL and PASSWORD, "Укажите данные от аккаунта ЮРАЙТ в файле account.txt"
+if not  (EMAIL and PASSWORD):
+    raise SystemExit(
+    "account.txt не настроен.\n"
+    "Классика: склонировал репо, запустил, не читая README. \n"
+    "Как исправить:\n"
+    "  1. Скопируй account.example.txt в account.txt\n"
+    "  2. Впиши туда свой email и пароль от urait.ru\n"
+    "  3. Запусти скрипт ещё раз\n"
+)
 
 DEFAULT_HEADERS = {
     'Host': 'urait.ru',
@@ -73,7 +81,6 @@ async def parse_book_info(book_url: str, session: ClientSession, semaphore: Sema
             viewer_url = book_url
         else: 
             viewer_url = book_url.replace('/book/','/viewer/') 
-        # viewer_url = book_url.replace('/book/', '/viewer/') проверим на работоспрособность, потом удалить
         response = await session.get(viewer_url)
         text = await response.text()
 
@@ -210,7 +217,7 @@ def add_ocr_layer(pdf_path: str, language: str = LANG_OCR):
             pdf_path,
             tmp_path,
             language=language,
-            force_ocr=True,       # не трогаем страницы, где уже есть текст
+            force_ocr=True,       # прогоняем по всем страницам ocr принудительно
             jobs=os.cpu_count(),  # параллельно по числу ядер
             deskew=False,
             clean=False,

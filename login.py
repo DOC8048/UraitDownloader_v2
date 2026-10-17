@@ -2,14 +2,19 @@
 import json
 import logging
 import os
-from asyncio import Semaphore
 
+import environ
 from aiohttp import ClientSession
 from yarl import URL
 
 COOKIES_FILE = "session_cookies.json"
 LOG = 'Logi'
 BASE_URL = URL("https://urait.ru")
+DEFAULT_HEADERS = {
+    'Host': 'urait.ru',
+    'Origin': 'https://urait.ru',
+    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 YaBrowser/24.7.0.0 Safari/537.36'
+}
 logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s [%(levelname)s] [%(filename)s:%(lineno)d] %(message)s',
@@ -19,33 +24,50 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 class AuthManager:
-    def __init__(self, session: ClientSession, semaphore: Semaphore, email, password) -> None:
-        self.session = session
-        self.semaphore = semaphore
-        self.email = email
-        self.password = password
+    def __init__(self) -> None:
+        env = environ.Env()
+        environ.Env.read_env('account.txt')
+        self.session = None
+        # self.semaphore = semaphore
+        self.email = env('URAIT_EMAIL')
+        self.password = env('URAIT_PASSWORD')
+    async def __aenter__(self):
+        """Вызывается на входе в блок 'async with'"""
+        self.session = ClientSession(headers=DEFAULT_HEADERS)
+        success = await self.ensure_authorized()
+        if not success:
+            await self.session.close()
+            raise PermissionError("Не удалось авторизоваться. Проверь account.txt")
+        return self
+
+    async def __aexit__(self, exc_type, exc_val, exc_tb):
+        """Вызывается на выходе из блока 'async with' — даже если была ошибка"""
+        if self.session:
+            await self.session.close()
+
     async def login(self):
         '''Функция для авторизации пользователя'''
-        async with self.semaphore:
-            print("Авторизация пользователя...")
-            response = await self.session.post(
+        print("Авторизация пользователя...")
+        assert self.session is not None
+        response = await self.session.post(
             'https://urait.ru/login',
             json={'email': self.email, 'password': self.password},
             allow_redirects=False
-            )
-            status = response.status
-            location = response.headers.get('Location', '')
-            if status == 302 and '/login' in location:
-                logger.warning('Неверный пароль')
-                return False
+        )
+        status = response.status
+        location = response.headers.get('Location', '')
+        if status == 302 and '/login' in location:
+            logger.warning('Неверный пароль')
+            return False
 
-            logger.info('Авторизация прошла успешно')
-            await self.save_cookies()
-            return True
+        logger.info('Авторизация прошла успешно')
+        await self.save_cookies()
+        return True
 
     async def save_cookies(self):
         """Сохраняет куки из сессии в JSON-файл.""" 
         cookies = {}
+        assert self.session is not None
         for cookie in self.session.cookie_jar:
                 cookies[cookie.key] = {
                     "value": cookie.value,
@@ -62,6 +84,7 @@ class AuthManager:
         with open(COOKIES_FILE, "r", encoding="utf-8") as f:
             cookies = json.load(f)
         for key, data in cookies.items():
+            assert self.session is not None
             self.session.cookie_jar.update_cookies(
                 {key: data["value"]},
             response_url=BASE_URL
@@ -73,6 +96,7 @@ class AuthManager:
     async def check_authorized(self) -> bool:
         """Делает контрольный запрос, чтобы проверить, жива ли сессия."""
         try:
+            assert self.session is not None
             async with self.session.get(
             "https://urait.ru/cabinet/profile",
             allow_redirects=False,

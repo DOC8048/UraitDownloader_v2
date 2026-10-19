@@ -189,7 +189,7 @@ def create_pdf(file_name: str, pdf_stack: list):
     return f"{file_name}.pdf"
 
 def add_ocr_layer(pdf_path: str, language: str = LANG_OCR):
-    """Накладывает  OCR-слой на pdf-файл(без OCR), замененяя его в итоге получая pdf-файл с OCR"""
+    """Накладывает  OCR-слой на pdf-файл(без OCR), заменяя его в итоге получая pdf-файл с OCR"""
     import ocrmypdf
 
     logger.info(f"Запуск OCR для: {pdf_path}")

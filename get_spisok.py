@@ -2,6 +2,8 @@ from pathlib import Path
 
 import pandas as pd
 
+from login import logger
+
 BCODE_PREFIX = 'https://urait.ru/bcode/'
 def get_excel_path() -> Path | None:
     """Спрашивает путь к Excel. Возвращает Path или None, если файла нет."""
@@ -36,7 +38,7 @@ def batch_download(excel_path):
             # data = {url: False for url in urls}
             return clean_url
         else:
-            print("Колонка 'Ознакомиться' не найдена. Вот какие есть:", df.columns.tolist())
+            logger.warning("Колонка 'Ознакомиться' не найдена. Вот какие есть:", df.columns.tolist())
     except Exception as e:
         print(f"Не удалось прочитать Excel: {e}")
         return

@@ -8,7 +8,7 @@ from aiohttp import ClientSession
 from yarl import URL
 
 COOKIES_FILE = "session_cookies.json"
-LOG = 'Logi'
+LOG = 'urait.log'
 BASE_URL = URL("https://urait.ru")
 DEFAULT_HEADERS = {
     'Host': 'urait.ru',

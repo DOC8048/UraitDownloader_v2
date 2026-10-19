@@ -88,8 +88,6 @@ async def parse_book_info(book_id: str, client) -> dict:
     if response.status != 200:
         raise RuntimeError(f'API вернул HTTP {response.status} для книги {book_id}')
     body = await response.json()
-    # with open(LOG, "w", encoding="utf-8") as f:
-    #     json.dump(body, f, ensure_ascii=False,indent=2)
     data = body.get('data')
     if not isinstance(data, dict):
         raise RuntimeError(f'В ответе API нет data для книги {book_id}')
@@ -114,8 +112,6 @@ async def get_page_count(book_uuid: str, client) -> int:
     if response.status != 200:
         raise RuntimeError(f'API просмотра вернул HTTP {response.status} для книги {book_uuid}')
     data = await response.json()
-    # with open(LOG, "w", encoding="utf-8") as f:  
-    #     json.dump(data, f, ensure_ascii=False,indent=2)
     if not isinstance(data, dict):
         raise RuntimeError(f'В ответе API просмотра нет данных для книги {book_uuid}')
     page_count = data.get('page_count') 
@@ -140,7 +136,7 @@ async def parse_page(
         page: int,
         session, 
         semaphore: asyncio.Semaphore,
-        ):
+        )-> None:
         """ Парсит pdf, превращая svg в pdf"""
         try:
             async with semaphore:

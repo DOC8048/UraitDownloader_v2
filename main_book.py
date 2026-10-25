@@ -3,7 +3,7 @@ import asyncio
 import shutil
 from asyncio import Semaphore
 
-from login import logger
+from login import LOG, logger
 from parser_book import (
     add_ocr_layer,
     create_pdf,
@@ -48,14 +48,14 @@ async def download_single_book(book_url, session, sema: Semaphore, do_ocr: bool)
             except Exception as e:
                     print(f"OCR не удался: {e}")
                     print("PDF сохранён без текстового слоя. Подробности в urait.log.")
-            else:
-                print("OCR пропущен.")
+        else:
+            print("OCR пропущен.")
         print(f"\nГотово! {pdf_file}")
         return True
     except Exception as e:
         logger.exception('Ошибка работы программы')
         print(f"\nЧто-то пошло не так: {e}")
-        print("Подробности в файле LOG_FILE")
+        print(f"Подробности в файле{LOG}" )
         return False
     finally:
         shutil.rmtree('./temp')

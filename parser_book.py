@@ -206,6 +206,7 @@ def add_ocr_layer(pdf_path: str, language: str = LANG_OCR):
             deskew=False,
             clean=False,
             optimize=0,
+            progress_bar=False # отключение прогресс бара для exe
         )
         shutil.move(tmp_path, pdf_path)
         logger.info("OCR успешно завершён")

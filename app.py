@@ -1,16 +1,68 @@
 
 import asyncio
+import io
 import multiprocessing
+import os
 import subprocess
 import sys
 import threading
 import tkinter as tk
 import webbrowser
 
+if os.name == 'nt': # Если запущены на Windows
+    # Запоминаем оригинальный метод
+    _original_popen = subprocess.Popen
+    
+    class HiddenPopen(_original_popen):
+        def __init__(self, *args, **kwargs):
+            # Принудительно скрываем окно для любого дочернего процесса
+            startupinfo = subprocess.STARTUPINFO()
+            startupinfo.dwFlags |= subprocess.STARTF_USESHOWWINDOW
+            startupinfo.wShowWindow = subprocess.SW_HIDE
+            
+            kwargs['startupinfo'] = startupinfo
+            kwargs['creationflags'] = subprocess.CREATE_NO_WINDOW
+            
+            super().__init__(*args, **kwargs)
+            
+    # Подменяем глобальный Popen на наш скрытый
+    subprocess.Popen = HiddenPopen
+    
 import customtkinter as ctk
 
 from back import run_download_process
+from login import logger
 
+
+def setup_paths():
+    """Добавляет пути к системным программам (работает только в EXE)."""
+    if getattr(sys, 'frozen', False):
+    # Это код, который выполняется ТОЛЬКО внутри собранного .exe
+    # Добавляем стандартные пути Windows в PATH, чтобы ocrmypdf их видел
+        if sys.stdout is None:
+            sys.stdout = io.StringIO()
+        if sys.stderr is None:
+            sys.stderr = io.StringIO()
+        if sys.stdin is None:
+            sys.stdin = io.StringIO()
+
+        paths_to_add = [
+            r"C:\Program Files\Tesseract-OCR",
+            r"C:\Program Files\gs\gs10.08.0\bin", 
+            r"C:\Program Files\qpdf\bin",
+        ]
+        for p in paths_to_add:
+            if os.path.exists(p) and p not in os.environ['PATH']:
+                os.environ['PATH'] += os.pathsep + p
+            
+    # Явно указываем pytesseract, где лежит exe
+    try:
+        import pytesseract
+        pytesseract.pytesseract.tesseract_cmd = r"C:\Program Files\Tesseract-OCR\tesseract.exe"
+    except ImportError:
+        pass
+
+setup_paths()
 
 class App(ctk.CTk):
     def __init__(self):
@@ -78,9 +130,12 @@ class App(ctk.CTk):
         url = self.entry_url.get().strip()
         mode = 'excel' if bool(self.checkbox_excel.get()) else 'single'
         do_ocr = bool(self.checkbox_ocr.get())
-        if not url:
-            self.log("Ошибка: введи ссылку!")
+        if mode == 'single' and not url:
+            self.log("Ошибка: для скачивания одной книги нужно ввести ссылку!")
             return
+        if mode == 'excel':
+            # Тут можно проверить наличие файла Spisok.xlsx, если хочешь
+            self.log("Запуск пакетного режима. Поиск ссылок в Excel-файле...")
         
         # Блокируем кнопку и очищаем лог
         self.btn_download.configure(state="disabled", text="Скачиваю...")
@@ -94,21 +149,58 @@ class App(ctk.CTk):
 
     def check_dependencies(self):
         """Возвращает словарь {название: (найден ли, ссылка на скачивание)}"""
+        setup_paths()
         deps = {
-            "Tesseract": ("tesseract", "https://github.com/UB-Mannheim/tesseract/wiki"),
-            "Ghostscript": ("gswin64c", "https://www.ghostscript.com/releases/gsdnld.html"),
-            "QPDF": ("qpdf", "https://qpdf.sourceforge.io/")
-            }
+            "Tesseract": (
+                r"C:\Program Files\Tesseract-OCR\tesseract.exe",
+                "https://github.com/UB-Mannheim/tesseract/wiki"
+            ),
+            "Ghostscript": (
+                r"C:\Program Files\gs\gs10.08.0\bin\gswin64c.exe",
+                "https://www.ghostscript.com/releases/gsdnld.html"
+            ),
+            "QPDF": ( 
+                 r"C:\Program Files\qpdf 12.4.2\bin\qpdf.exe",
+                "https://qpdf.sourceforge.io/"
+            )
+        }
     
         results = {}
-        for name, (cmd, url) in deps.items():
+        for name, (exe_path, url) in deps.items():
+            is_found = False
+            # 1. Проверяем, есть ли файл по жесткому пути
+            if os.path.exists(exe_path):
+                cmd = exe_path
+            # 2. Если нет, пробуем просто по имени (через PATH)
+            else:
+                cmd = os.path.basename(exe_path)
             try:
                 # Пытаемся запустить команду с флагом версии
-                subprocess.run([cmd, "--version"], capture_output=True, check=True, timeout=5)
-                results[name] = (True, url) # True = найден
-            except (FileNotFoundError, subprocess.CalledProcessError, subprocess.TimeoutExpired):
-                results[name] = (False, url) # False = не найден
-
+                process = subprocess.run(  # noqa: PLW1510
+                    [cmd, "--version"], 
+                        capture_output=True,
+                        text=True,  
+                        timeout=10,
+                        stdin=subprocess.DEVNULL
+                        )
+                # Если код возврата 0 - программа ответила успешно
+                if process.returncode == 0:
+                    is_found = True
+                    version_info = process.stdout.strip().split('\n')[0] if process.stdout else "OK"
+                    logger.info(f"✅ {name} найден. Версия: {version_info}")
+                else:
+                    logger.error(f"⚠️ {name} найден, но вернул ошибку. Код: {process.returncode}")
+            
+            except FileNotFoundError:
+                logger.error(f"❌ {name} не найден в системе по пути '{exe_path}', ни в PATH") # type: ignore
+  
+            except subprocess.CalledProcessError as e:
+                logger.error(f"⚠️ {name} найден, но вернул ошибку. Код: {e.returncode}. Ошибка: {e.stderr.strip()}")
+                
+            except subprocess.TimeoutExpired:
+                logger.error(f"⏳ {name} завис и не ответил за 10 секунд.")
+            
+            results[name] = (is_found, url)    
         return results
 
     def toggle_deps_panel(self):
@@ -123,12 +215,16 @@ class App(ctk.CTk):
 
     def _build_deps_content(self):
         """Наполняет панель строками с проверками."""
+        for widget in self.frame_deps.winfo_children():
+            widget.destroy()
         label_title = ctk.CTkLabel(
             self.frame_deps, 
             text="Системные программы (нужны для OCR):", 
             font=("Arial", 13, "bold"),
             text_color="#aaaaaa"
         )
+        logger.info(f"DEBUG: Отрисовка панели. Статус: {self.deps_status}")
+
         label_title.pack(anchor="w", padx=10, pady=(10, 5))
 
         for dep_name, (is_installed, download_url) in self.deps_status.items():
@@ -148,6 +244,27 @@ class App(ctk.CTk):
                     command=lambda url=download_url: webbrowser.open(url)
                 )
                 btn.pack(side="left", padx=10)
+        
+        # 2. ДОБАВЛЯЕМ КНОПКУ "ПРОВЕРИТЬ СНОВА"
+        btn_refresh = ctk.CTkButton(
+            self.frame_deps, 
+            text="Проверить снова", 
+            width=120, height=24, 
+            fg_color="#555555", hover_color="#333333",
+            command=self.refresh_dependencies
+        )
+        btn_refresh.pack(anchor="e", padx=10, pady=10)
+       
+    def refresh_dependencies(self):
+        """Перепроверяет зависимости и обновляет интерфейс."""
+        self.deps_status = self.check_dependencies() # Получаем новые данные
+        self._build_deps_content()                   # Перерисовываем
+        
+            # Обновляем цвет главной кнопки сверху
+        has_errors = any(not status[0] for status in self.deps_status.values())
+        btn_text = "❌ Проблемы с зависимостями" if has_errors else "✅ Все зависимости установлены"
+        btn_color = "#8B0000" if has_errors else "#2b2b2b"
+        self.btn_toggle_deps.configure(text=btn_text, fg_color=btn_color)
 
     def enable_clipboard_support(self, widget):
         """Добавляет горячие клавиши и контекстное меню для виджета."""
@@ -183,8 +300,9 @@ class App(ctk.CTk):
     def run_backend(self,mode, url, do_ocr):
         """Вызываем бэкенд"""
         old_stdout = sys.stdout
+        old_stderr = sys.stderr
         sys.stdout = self
-
+        sys.stderr = self
         async def task():
             try:
                 await run_download_process(
@@ -205,6 +323,7 @@ class App(ctk.CTk):
             asyncio.run(task())
         finally:
             sys.stdout = old_stdout
+            sys.stderr = old_stderr
             
      # --- Методы для перехвата print() ---
     def write(self, text):

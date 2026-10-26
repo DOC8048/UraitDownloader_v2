@@ -1,10 +1,21 @@
+import sys
 from pathlib import Path
 
 import pandas as pd
 
 from login import logger
 
-BCODE_PREFIX = 'https://urait.ru/bcode/'
+
+def get_excel_path_GUI():
+    """Ищет Excel в загрузках, функция для взаимодействия с GUI"""
+    excel_path = Path.home() / 'Downloads' / 'Spisok.xlsx'
+    print(f"Ищу файл по умолчанию: {excel_path}")
+    if not excel_path.exists():
+        print(f"❌ Файл не найден: {excel_path}")
+        print("   Положите Spisok.xlsx в папку Загрузки или укажите полный путь.")
+        return None
+    return excel_path 
+
 def get_excel_path() -> Path | None:
     """Спрашивает путь к Excel. Возвращает Path или None, если файла нет."""
     raw_path = input(
@@ -44,9 +55,24 @@ def batch_download(excel_path):
         return
 
 def get_spisok():
-    excel_path = get_excel_path()
+    is_exe = getattr(sys, 'frozen', False)
+    if is_exe:
+        # Если это EXE - используем версию для GUI
+        excel_path = get_excel_path_GUI()
+    else:
+        # Если это консоль - используем старую версию с input()
+        excel_path = get_excel_path()
+    if not excel_path or not excel_path.exists():
+        print("Ошибка: не удалось получить путь к файлу Excel.")
+        return []
+    
     data = batch_download(excel_path=excel_path)
-    print (data)
+    if not data:
+        print("В Excel не найдено ссылок.")
+        return []
+    
+    print(f"Найдено ссылок: {len(data)}")
+    
     return data
 
 if __name__ == '__main__':

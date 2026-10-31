@@ -30,8 +30,8 @@ if os.name == 'nt': # Если запущены на Windows
     
 import customtkinter as ctk
 
-from back import run_download_process
-from login import logger
+from backend.login import logger
+from backend.main_exe import run_download_process
 
 
 def setup_paths():

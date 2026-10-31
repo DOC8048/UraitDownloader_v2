@@ -8,7 +8,6 @@ urait.log
 temp/
 *.env
 account.txt
-pyproject.toml
 test.py
 *.pyc
 session_cookies.json
@@ -17,3 +16,6 @@ Logi
 Logi_debag
 complex_example.py
 output/
+*.egg-info/
+build/
+dist/

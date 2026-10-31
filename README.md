@@ -57,6 +57,7 @@
 - **Windows**: скачать установщик с
   https://github.com/UB-Mannheim/tesseract/wiki. При установке обязательно
   выбрать компонент **Russian language data**.
+  Нужно установить программу в Path (я верю вы справитесь, ИИ в помощь (если что пишите в issue, помогу))
 - **Linux**: `sudo apt install tesseract-ocr tesseract-ocr-rus`
 - **macOS**: `brew install tesseract tesseract-lang`
 
@@ -68,8 +69,8 @@ tesseract --list-langs   # должен быть в списке rus
 
 **Ghostscript** — обработка PDF:
 
-- **Windows**: скачать с https://www.ghostscript.com/releases/gsdnld.html
-  (файл `gs*-w64.exe`, не source). Установщик сам пропишет PATH.
+- **Windows**: скачать с https://github.com/ArtifexSoftware/ghostpdl-downloads/releases
+  (файл `gs<версия>-w64.exe`). Установщик сам пропишет PATH.
 - **Linux**: `sudo apt install ghostscript`
 - **macOS**: `brew install ghostscript`
 
@@ -81,7 +82,7 @@ gs --version         # Linux/macOS
 
 **QPDF** — ещё одна утилита для PDF:
 
-- **Windows**: скачать с https://qpdf.sourceforge.io/, при установке выбрать
+- **Windows**: скачать с https://github.com/qpdf/qpdf/releases/tag/v12.4.2 (файл `qpdf-<версия>-mingw64.exe`), при установке выбрать
   `Add qpdf to the system PATH for current user`.
 - **Linux**: `sudo apt install qpdf`
 - **macOS**: `brew install qpdf`
@@ -95,7 +96,7 @@ qpdf --version
 
 1. Клонировать репозиторий:
    ```
-   git clone https://github.com/DOC8048/urait-downloader.git
+   git clone https://github.com/DOC8048/UraitDownloader_v2.git
    cd urait-downloader
    ```
 
@@ -128,7 +129,7 @@ qpdf --version
 ### Использование
 
 ```
-python main_router.py
+python main_CLI.py
 ```
 
 Программа спросит:

@@ -1,0 +1,13 @@
+[tool.ruff.lint]
+ignore = ["BLE001","TRY004"]
+
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "urait-downloader"
+version = "0.1.0"
+
+[tool.setuptools.packages.find]
+include = ["backend*"]
